@@ -1,0 +1,132 @@
+version: 1
+rules:
+  # ==========================================
+  # Validation Rules
+  # Applied before create and update operations
+  # ==========================================
+
+  # Skip validation if not authorized
+  - id: validation_skip_unauthorized
+    description: "Skip validation if not authorized"
+    when:
+      rule_type: todo_validation
+      is_authorized: false
+    then:
+      validation_status: skipped
+      validation_error: null
+      is_valid: false
+      skip_reason: "Not authorized"
+
+  # Title validation - missing
+  - id: validation_title_missing
+    description: "Title is required"
+    when:
+      rule_type: todo_validation
+      is_authorized: true
+      any:
+        - has_title: false
+        - title_empty: true
+    then:
+      validation_status: invalid
+      validation_error: "Title is required"
+      is_valid: false
+      invalid_field: title
+
+  # Title validation - too long
+  - id: validation_title_too_long
+    description: "Title exceeds maximum length"
+    when:
+      rule_type: todo_validation
+      is_authorized: true
+      has_title: true
+      title_length:
+        gt: 200
+    then:
+      validation_status: invalid
+      validation_error: "Title must be 200 characters or less"
+      is_valid: false
+      invalid_field: title
+
+  # Title validation - too short
+  - id: validation_title_too_short
+    description: "Title is too short"
+    when:
+      rule_type: todo_validation
+      is_authorized: true
+      has_title: true
+      title_length:
+        lt: 3
+    then:
+      validation_status: invalid
+      validation_error: "Title must be at least 3 characters"
+      is_valid: false
+      invalid_field: title
+
+  # Description too long
+  - id: validation_description_too_long
+    description: "Description exceeds maximum length"
+    when:
+      rule_type: todo_validation
+      is_authorized: true
+      has_description: true
+      description_length:
+        gt: 2000
+    then:
+      validation_status: invalid
+      validation_error: "Description must be 2000 characters or less"
+      is_valid: false
+      invalid_field: description
+
+  # Due date validation - invalid format
+  - id: validation_due_date_invalid
+    description: "Due date has invalid format"
+    when:
+      rule_type: todo_validation
+      is_authorized: true
+      has_due_date: true
+      due_date_valid: false
+    then:
+      validation_status: invalid
+      validation_error: "Due date is not valid"
+      is_valid: false
+      invalid_field: due_date
+
+  # Due date validation - in the past
+  - id: validation_due_date_past
+    description: "Due date is in the past"
+    when:
+      rule_type: todo_validation
+      is_authorized: true
+      has_due_date: true
+      due_date_valid: true
+      due_date_in_past: true
+    then:
+      validation_status: warning
+      validation_warning: "Due date is in the past"
+      is_valid: true
+      has_warning: true
+
+  # Completed status invalid
+  - id: validation_completed_invalid
+    description: "Completed status must be boolean"
+    when:
+      rule_type: todo_validation
+      is_authorized: true
+      has_completed: true
+      completed_is_boolean: false
+    then:
+      validation_status: invalid
+      validation_error: "Completed must be true or false"
+      is_valid: false
+      invalid_field: completed
+
+  # All validations passed
+  - id: validation_passed
+    description: "All validations passed"
+    when:
+      rule_type: todo_validation
+      is_authorized: true
+    then:
+      validation_status: valid
+      validation_error: null
+      is_valid: true

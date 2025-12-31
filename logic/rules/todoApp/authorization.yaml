@@ -1,0 +1,114 @@
+version: 1
+rules:
+  # ==========================================
+  # Authorization Rules
+  # Core rule: User may only access todo items they own
+  # Exception: Administrators may access all todos
+  # ==========================================
+
+  # First check: can_proceed must be true from authentication
+  - id: authz_not_authenticated
+    description: "Cannot authorize unauthenticated user"
+    when:
+      rule_type: todo_authorization
+      can_proceed: false
+    then:
+      authz_status: denied
+      authz_error: "Authentication required before authorization"
+      is_authorized: false
+
+  # Check if todo exists (for operations that require existing todo)
+  - id: authz_todo_not_found
+    description: "Todo does not exist"
+    when:
+      rule_type: todo_authorization
+      can_proceed: true
+      requires_existing_todo: true
+      todo_exists: false
+    then:
+      authz_status: not_found
+      authz_error: "Todo not found"
+      is_authorized: false
+
+  # Admin can access any todo
+  - id: authz_admin_access
+    description: "Administrators can access all todos"
+    when:
+      rule_type: todo_authorization
+      can_proceed: true
+      is_admin: true
+    then:
+      authz_status: authorized
+      authz_error: null
+      is_authorized: true
+      authz_reason: "Admin access"
+
+  # Owner can access their own todo
+  - id: authz_owner_access
+    description: "Users can access their own todos"
+    when:
+      rule_type: todo_authorization
+      all:
+        - can_proceed: true
+        - is_admin: false
+        - requires_existing_todo: true
+        - is_owner: true
+    then:
+      authz_status: authorized
+      authz_error: null
+      is_authorized: true
+      authz_reason: "Owner access"
+
+  # User creating new todo (doesn't require existing todo)
+  - id: authz_create_todo
+    description: "Any authenticated user can create a todo"
+    when:
+      rule_type: todo_authorization
+      can_proceed: true
+      requires_existing_todo: false
+      operation: create
+    then:
+      authz_status: authorized
+      authz_error: null
+      is_authorized: true
+      authz_reason: "Create operation"
+
+  # User listing their own todos
+  - id: authz_list_own_todos
+    description: "Users can list their own todos"
+    when:
+      rule_type: todo_authorization
+      can_proceed: true
+      requires_existing_todo: false
+      operation: list
+    then:
+      authz_status: authorized
+      authz_error: null
+      is_authorized: true
+      authz_reason: "List own todos"
+      scope: own
+
+  # Non-owner trying to access someone else's todo
+  - id: authz_not_owner
+    description: "Users cannot access others' todos"
+    when:
+      rule_type: todo_authorization
+      all:
+        - can_proceed: true
+        - is_admin: false
+        - requires_existing_todo: true
+        - is_owner: false
+    then:
+      authz_status: forbidden
+      authz_error: "You do not have access to this todo"
+      is_authorized: false
+
+  # Default deny
+  - id: authz_default_deny
+    description: "Deny by default"
+    when:
+      rule_type: todo_authorization
+    then:
+      authz_status: denied
+      authz_error: "Access denied"
+      is_authorized: false

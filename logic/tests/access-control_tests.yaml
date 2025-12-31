@@ -1,0 +1,189 @@
+version: 1
+tests:
+  # === Blocked States ===
+
+  - name: suspended super_admin still blocked
+    input:
+      rule_type: access_control
+      role: super_admin
+      account_status: suspended
+      email_verified: true
+    expect:
+      access_granted: false
+      access_level: none
+      matched_rule: account_suspended
+
+  - name: active but unverified gets limited access
+    input:
+      rule_type: access_control
+      role: editor
+      account_status: active
+      email_verified: false
+    expect:
+      access_granted: true
+      access_level: limited
+      matched_rule: account_pending_verification
+
+  - name: blocked region denies access
+    input:
+      rule_type: access_control
+      role: super_admin
+      account_status: active
+      email_verified: true
+      region: sanctioned_country_a
+    expect:
+      access_granted: false
+      matched_rule: ip_blocked_region
+
+  # === Super Admin ===
+
+  - name: super admin gets full access
+    input:
+      rule_type: access_control
+      role: super_admin
+      account_status: active
+      email_verified: true
+      region: us
+    expect:
+      access_granted: true
+      access_level: full
+      can_delete_organization: true
+      matched_rule: super_admin_access
+
+  # === Admin Tiers ===
+
+  - name: billing admin can manage billing not users
+    input:
+      rule_type: access_control
+      role: billing_admin
+      account_status: active
+      email_verified: true
+    expect:
+      access_granted: true
+      can_manage_billing: true
+      can_manage_users: false
+      matched_rule: billing_admin_access
+
+  - name: user admin can manage users not billing
+    input:
+      rule_type: access_control
+      role: user_admin
+      account_status: active
+      email_verified: true
+    expect:
+      access_granted: true
+      can_manage_users: true
+      can_manage_billing: false
+      matched_rule: user_admin_access
+
+  # === Resource-Based Access ===
+
+  - name: resource owner gets full access
+    input:
+      rule_type: access_control
+      role: member
+      account_status: active
+      email_verified: true
+      is_resource_owner: true
+    expect:
+      access_granted: true
+      access_level: full
+      matched_rule: owner_full_access
+
+  - name: editor role gets write access
+    input:
+      rule_type: access_control
+      role: editor
+      account_status: active
+      email_verified: true
+      is_resource_owner: false
+    expect:
+      access_granted: true
+      access_level: write
+      matched_rule: editor_write_access
+
+  - name: team editor gets write access via team membership
+    input:
+      rule_type: access_control
+      role: member
+      account_status: active
+      email_verified: true
+      is_team_editor: true
+      is_resource_owner: false
+    expect:
+      access_granted: true
+      access_level: write
+      matched_rule: editor_write_access
+
+  - name: viewer role gets read access
+    input:
+      rule_type: access_control
+      role: viewer
+      account_status: active
+      email_verified: true
+    expect:
+      access_granted: true
+      access_level: read
+      matched_rule: viewer_read_access
+
+  - name: team viewer gets read access
+    input:
+      rule_type: access_control
+      role: member
+      account_status: active
+      email_verified: true
+      is_team_viewer: true
+    expect:
+      access_granted: true
+      access_level: read
+      matched_rule: viewer_read_access
+
+  # === Public Resources ===
+
+  - name: public resource accessible to anyone
+    input:
+      rule_type: access_control
+      resource_visibility: public
+    expect:
+      access_granted: true
+      access_level: read
+      matched_rule: public_resource_anonymous
+
+  # === Default Deny ===
+
+  - name: random authenticated user denied by default
+    input:
+      rule_type: access_control
+      role: member
+      account_status: active
+      email_verified: true
+      is_resource_owner: false
+      is_team_editor: false
+      is_team_viewer: false
+      resource_visibility: private
+    expect:
+      access_granted: false
+      matched_rule: default_deny
+
+  # === Priority Tests ===
+
+  - name: suspension beats super_admin role
+    input:
+      rule_type: access_control
+      role: super_admin
+      account_status: suspended
+      email_verified: true
+    expect:
+      access_granted: false
+      matched_rule: account_suspended
+
+  - name: owner access beats editor role
+    input:
+      rule_type: access_control
+      role: editor
+      account_status: active
+      email_verified: true
+      is_resource_owner: true
+    expect:
+      access_level: full
+      matched_rule: owner_full_access

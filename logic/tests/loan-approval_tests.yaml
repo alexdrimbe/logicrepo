@@ -1,0 +1,247 @@
+version: 1
+tests:
+  # === Automatic Rejections ===
+
+  - name: reject applicant with recent bankruptcy
+    input:
+      rule_type: loan_approval
+      has_recent_bankruptcy: true
+      credit_score: 720
+      debt_to_income_ratio: 0.25
+      loan_amount: 10000
+    expect:
+      approved: false
+      decision: auto_reject
+      matched_rule: reject_bankruptcy
+
+  - name: reject high debt-to-income ratio
+    input:
+      rule_type: loan_approval
+      credit_score: 750
+      debt_to_income_ratio: 0.55
+      loan_amount: 15000
+    expect:
+      approved: false
+      decision: auto_reject
+      matched_rule: reject_insufficient_income
+
+  - name: reject low credit high amount
+    input:
+      rule_type: loan_approval
+      credit_score: 550
+      debt_to_income_ratio: 0.35
+      loan_amount: 25000
+    expect:
+      approved: false
+      decision: auto_reject
+      matched_rule: reject_low_credit_high_amount
+
+  - name: low credit small amount not auto-rejected
+    input:
+      rule_type: loan_approval
+      credit_score: 550
+      debt_to_income_ratio: 0.35
+      loan_amount: 5000
+    expect:
+      decision: reject
+      matched_rule: default_reject
+
+  # === Automatic Approvals ===
+
+  - name: excellent credit auto-approved
+    input:
+      rule_type: loan_approval
+      credit_score: 780
+      debt_to_income_ratio: 0.25
+      employment_years: 5
+      loan_amount: 30000
+      has_recent_bankruptcy: false
+    expect:
+      approved: true
+      decision: auto_approve
+      interest_rate: 5.99
+      matched_rule: approve_excellent_credit_low_dti
+
+  - name: excellent credit but high DTI needs review
+    input:
+      rule_type: loan_approval
+      credit_score: 780
+      debt_to_income_ratio: 0.45
+      employment_years: 5
+      loan_amount: 30000
+    expect:
+      decision: manual_review
+      matched_rule: review_high_dti_mitigating_factors
+
+  - name: good credit with collateral approved
+    input:
+      rule_type: loan_approval
+      credit_score: 700
+      debt_to_income_ratio: 0.35
+      has_collateral: true
+      collateral_value_ratio: 2.0
+      loan_amount: 40000
+    expect:
+      approved: true
+      decision: auto_approve
+      interest_rate: 7.49
+      matched_rule: approve_good_credit_secured
+
+  - name: existing customer in good standing approved
+    input:
+      rule_type: loan_approval
+      is_existing_customer: true
+      customer_tenure_years: 5
+      has_missed_payments: false
+      credit_score: 680
+      loan_amount: 20000
+      debt_to_income_ratio: 0.30
+    expect:
+      approved: true
+      decision: auto_approve
+      interest_rate: 6.99
+      matched_rule: approve_existing_customer_good_standing
+
+  - name: existing customer with missed payments not auto-approved
+    input:
+      rule_type: loan_approval
+      is_existing_customer: true
+      customer_tenure_years: 5
+      has_missed_payments: true
+      credit_score: 650
+      loan_amount: 25000
+      debt_to_income_ratio: 0.30
+    expect:
+      decision: conditional
+      matched_rule: conditional_approve_reduced_amount
+
+  # === Manual Review Cases ===
+
+  - name: large loan requires senior review
+    input:
+      rule_type: loan_approval
+      credit_score: 800
+      debt_to_income_ratio: 0.20
+      loan_amount: 150000
+      employment_years: 10
+    expect:
+      decision: manual_review
+      review_level: senior
+      matched_rule: review_high_amount
+
+  - name: self-employed needs income verification
+    input:
+      rule_type: loan_approval
+      employment_type: self_employed
+      credit_score: 720
+      debt_to_income_ratio: 0.30
+      loan_amount: 30000
+    expect:
+      decision: manual_review
+      requires_manual_review: true
+      matched_rule: review_self_employed
+
+  - name: new employee needs review
+    input:
+      rule_type: loan_approval
+      employment_type: full_time
+      employment_years: 0.5
+      credit_score: 700
+      debt_to_income_ratio: 0.30
+      loan_amount: 15000
+    expect:
+      decision: manual_review
+      matched_rule: review_new_employment
+
+  - name: borderline credit with collateral needs review
+    input:
+      rule_type: loan_approval
+      credit_score: 620
+      debt_to_income_ratio: 0.40
+      has_collateral: true
+      loan_amount: 20000
+    expect:
+      decision: manual_review
+      matched_rule: review_borderline_credit
+
+  - name: borderline credit existing customer needs review
+    input:
+      rule_type: loan_approval
+      credit_score: 600
+      debt_to_income_ratio: 0.40
+      is_existing_customer: true
+      loan_amount: 18000
+    expect:
+      decision: manual_review
+      matched_rule: review_borderline_credit
+
+  - name: high DTI with long employment needs review
+    input:
+      rule_type: loan_approval
+      credit_score: 720
+      debt_to_income_ratio: 0.45
+      employment_years: 8
+      loan_amount: 25000
+    expect:
+      decision: manual_review
+      matched_rule: review_high_dti_mitigating_factors
+
+  # === Conditional Approvals ===
+
+  - name: borderline credit offered cosigner option
+    input:
+      rule_type: loan_approval
+      credit_score: 610
+      debt_to_income_ratio: 0.40
+      loan_amount: 12000
+    expect:
+      decision: conditional
+      condition: "Requires cosigner with credit score 700+"
+      matched_rule: conditional_approve_with_cosigner
+
+  - name: fair credit high amount gets reduced offer
+    input:
+      rule_type: loan_approval
+      credit_score: 650
+      debt_to_income_ratio: 0.35
+      loan_amount: 35000
+    expect:
+      decision: conditional
+      max_approved_amount: 20000
+      matched_rule: conditional_approve_reduced_amount
+
+  # === Priority Tests ===
+
+  - name: bankruptcy trumps excellent credit
+    input:
+      rule_type: loan_approval
+      has_recent_bankruptcy: true
+      credit_score: 800
+      debt_to_income_ratio: 0.15
+      employment_years: 10
+      loan_amount: 5000
+    expect:
+      approved: false
+      matched_rule: reject_bankruptcy
+
+  - name: high DTI trumps good credit
+    input:
+      rule_type: loan_approval
+      credit_score: 750
+      debt_to_income_ratio: 0.52
+      loan_amount: 10000
+    expect:
+      approved: false
+      matched_rule: reject_insufficient_income
+
+  - name: large loan review trumps excellent profile
+    input:
+      rule_type: loan_approval
+      credit_score: 800
+      debt_to_income_ratio: 0.20
+      employment_years: 15
+      loan_amount: 200000
+    expect:
+      decision: manual_review
+      review_level: senior
+      matched_rule: review_high_amount

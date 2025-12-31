@@ -1,0 +1,152 @@
+version: 1
+rules:
+  # ==========================================
+  # Todo Operations - Final outcome rules
+  # Determines the final result of each operation
+  # ==========================================
+
+  # --- Early exits (auth/authz/validation failures) ---
+
+  - id: op_auth_failed
+    description: "Operation failed - not authenticated"
+    when:
+      rule_type: todo_operation
+      auth_status: denied
+    then:
+      operation_status: failed
+      http_status: 401
+      error_type: authentication_error
+      should_execute: false
+
+  - id: op_not_found
+    description: "Operation failed - todo not found"
+    when:
+      rule_type: todo_operation
+      authz_status: not_found
+    then:
+      operation_status: failed
+      http_status: 404
+      error_type: not_found
+      should_execute: false
+
+  - id: op_forbidden
+    description: "Operation failed - access forbidden"
+    when:
+      rule_type: todo_operation
+      authz_status: forbidden
+    then:
+      operation_status: failed
+      http_status: 403
+      error_type: forbidden
+      should_execute: false
+
+  - id: op_validation_failed
+    description: "Operation failed - validation error"
+    when:
+      rule_type: todo_operation
+      is_valid: false
+      validation_status: invalid
+    then:
+      operation_status: failed
+      http_status: 400
+      error_type: validation_error
+      should_execute: false
+
+  # --- Successful operations ---
+
+  # CREATE
+  - id: op_create_success
+    description: "Create todo successfully"
+    when:
+      rule_type: todo_operation
+      operation: create
+      is_authorized: true
+      is_valid: true
+    then:
+      operation_status: success
+      http_status: 201
+      action: create_todo
+      should_execute: true
+      set_owner: true
+      set_default_status: true
+
+  # READ single
+  - id: op_read_success
+    description: "Read todo successfully"
+    when:
+      rule_type: todo_operation
+      operation: read
+      is_authorized: true
+    then:
+      operation_status: success
+      http_status: 200
+      action: return_todo
+      should_execute: true
+
+  # LIST
+  - id: op_list_admin_success
+    description: "Admin lists all todos"
+    when:
+      rule_type: todo_operation
+      operation: list
+      is_authorized: true
+      is_admin: true
+    then:
+      operation_status: success
+      http_status: 200
+      action: return_all_todos
+      should_execute: true
+      filter_by_owner: false
+
+  - id: op_list_user_success
+    description: "User lists their own todos"
+    when:
+      rule_type: todo_operation
+      operation: list
+      is_authorized: true
+      is_admin: false
+    then:
+      operation_status: success
+      http_status: 200
+      action: return_user_todos
+      should_execute: true
+      filter_by_owner: true
+
+  # UPDATE
+  - id: op_update_success
+    description: "Update todo successfully"
+    when:
+      rule_type: todo_operation
+      operation: update
+      is_authorized: true
+      is_valid: true
+    then:
+      operation_status: success
+      http_status: 200
+      action: update_todo
+      should_execute: true
+      preserve_owner: true
+
+  # DELETE
+  - id: op_delete_success
+    description: "Delete todo successfully"
+    when:
+      rule_type: todo_operation
+      operation: delete
+      is_authorized: true
+    then:
+      operation_status: success
+      http_status: 200
+      action: delete_todo
+      should_execute: true
+
+  # Default - unknown operation
+  - id: op_unknown
+    description: "Unknown operation"
+    when:
+      rule_type: todo_operation
+    then:
+      operation_status: failed
+      http_status: 400
+      error_type: invalid_operation
+      should_execute: false

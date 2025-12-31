@@ -1,0 +1,245 @@
+version: 1
+rules:
+  # === Automatic Rejections ===
+
+  - id: reject_bankruptcy
+    description: "Reject if bankruptcy in last 7 years"
+    when:
+      rule_type: loan_approval
+      has_recent_bankruptcy: true
+    then:
+      approved: false
+      decision: auto_reject
+      reason: "Recent bankruptcy on record"
+      requires_manual_review: false
+
+  - id: reject_insufficient_income
+    description: "Reject if debt-to-income ratio too high"
+    when:
+      rule_type: loan_approval
+      debt_to_income_ratio:
+        gt: 0.50
+    then:
+      approved: false
+      decision: auto_reject
+      reason: "Debt-to-income ratio exceeds 50%"
+      requires_manual_review: false
+
+  - id: reject_low_credit_high_amount
+    description: "Reject high loan amounts with poor credit"
+    when:
+      rule_type: loan_approval
+      all:
+        - credit_score:
+            lt: 580
+        - loan_amount:
+            gte: 10000
+    then:
+      approved: false
+      decision: auto_reject
+      reason: "Credit score too low for requested amount"
+      requires_manual_review: false
+
+  # === Automatic Approvals - Excellent Candidates ===
+
+  - id: approve_excellent_credit_low_dti
+    description: "Auto-approve excellent credit with low debt"
+    when:
+      rule_type: loan_approval
+      all:
+        - credit_score:
+            gte: 750
+        - debt_to_income_ratio:
+            lte: 0.30
+        - employment_years:
+            gte: 2
+        - loan_amount:
+            lte: 50000
+    then:
+      approved: true
+      decision: auto_approve
+      interest_rate: 5.99
+      reason: "Excellent credit profile"
+      requires_manual_review: false
+
+  - id: approve_good_credit_secured
+    description: "Auto-approve good credit with collateral"
+    when:
+      rule_type: loan_approval
+      all:
+        - credit_score:
+            gte: 680
+        - has_collateral: true
+        - collateral_value_ratio:
+            gte: 1.5
+        - debt_to_income_ratio:
+            lte: 0.40
+    then:
+      approved: true
+      decision: auto_approve
+      interest_rate: 7.49
+      reason: "Good credit with adequate collateral"
+      requires_manual_review: false
+
+  - id: approve_existing_customer_good_standing
+    description: "Auto-approve existing customers in good standing"
+    when:
+      rule_type: loan_approval
+      all:
+        - is_existing_customer: true
+        - customer_tenure_years:
+            gte: 3
+        - has_missed_payments: false
+        - credit_score:
+            gte: 650
+        - loan_amount:
+            lte: 25000
+    then:
+      approved: true
+      decision: auto_approve
+      interest_rate: 6.99
+      reason: "Valued existing customer"
+      requires_manual_review: false
+
+  # === Manual Review - Edge Cases ===
+
+  - id: review_high_amount
+    description: "Manual review for large loan amounts"
+    when:
+      rule_type: loan_approval
+      loan_amount:
+        gt: 100000
+    then:
+      approved: false
+      decision: manual_review
+      reason: "Loan amount requires senior underwriter review"
+      requires_manual_review: true
+      review_level: senior
+
+  - id: review_self_employed
+    description: "Self-employed applicants need income verification"
+    when:
+      rule_type: loan_approval
+      all:
+        - employment_type: self_employed
+        - credit_score:
+            gte: 620
+    then:
+      approved: false
+      decision: manual_review
+      reason: "Self-employment income verification required"
+      requires_manual_review: true
+      review_level: standard
+
+  - id: review_new_employment
+    description: "Review applicants with recent job changes"
+    when:
+      rule_type: loan_approval
+      all:
+        - employment_years:
+            lt: 1
+        - credit_score:
+            gte: 650
+        - any:
+            - employment_type: full_time
+            - employment_type: contract
+    then:
+      approved: false
+      decision: manual_review
+      reason: "Employment history too short - verification needed"
+      requires_manual_review: true
+      review_level: standard
+
+  - id: review_borderline_credit
+    description: "Borderline credit scores need review"
+    when:
+      rule_type: loan_approval
+      all:
+        - credit_score:
+            gte: 580
+            lt: 650
+        - debt_to_income_ratio:
+            lte: 0.45
+        - any:
+            - has_collateral: true
+            - is_existing_customer: true
+    then:
+      approved: false
+      decision: manual_review
+      reason: "Borderline credit - additional factors to consider"
+      requires_manual_review: true
+      review_level: standard
+
+  - id: review_high_dti_mitigating_factors
+    description: "High DTI but with mitigating factors"
+    when:
+      rule_type: loan_approval
+      all:
+        - debt_to_income_ratio:
+            gt: 0.40
+            lte: 0.50
+        - credit_score:
+            gte: 700
+        - any:
+            - employment_years:
+                gte: 5
+            - has_collateral: true
+    then:
+      approved: false
+      decision: manual_review
+      reason: "High DTI with positive factors - underwriter discretion"
+      requires_manual_review: true
+      review_level: standard
+
+  # === Conditional Approvals ===
+
+  - id: conditional_approve_with_cosigner
+    description: "Approve if applicant provides cosigner"
+    when:
+      rule_type: loan_approval
+      all:
+        - credit_score:
+            gte: 580
+            lt: 650
+        - debt_to_income_ratio:
+            lte: 0.45
+        - loan_amount:
+            lte: 15000
+    then:
+      approved: false
+      decision: conditional
+      condition: "Requires cosigner with credit score 700+"
+      interest_rate: 12.99
+      requires_manual_review: false
+
+  - id: conditional_approve_reduced_amount
+    description: "Approve for reduced amount"
+    when:
+      rule_type: loan_approval
+      all:
+        - credit_score:
+            gte: 620
+            lt: 680
+        - loan_amount:
+            gt: 20000
+        - debt_to_income_ratio:
+            lte: 0.40
+    then:
+      approved: false
+      decision: conditional
+      condition: "Approved for maximum $20,000"
+      max_approved_amount: 20000
+      interest_rate: 9.99
+      requires_manual_review: false
+
+  # === Default Rejection ===
+
+  - id: default_reject
+    description: "Reject applications that don't meet any criteria"
+    when:
+      rule_type: loan_approval
+    then:
+      approved: false
+      decision: reject
+      reason: "Does not meet minimum qualification criteria"
+      requires_manual_review: false

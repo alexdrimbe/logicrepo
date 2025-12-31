@@ -1,0 +1,342 @@
+version: 1
+tests:
+  # === Kill Switches ===
+
+  - name: kill switch disables for everyone
+    input:
+      rule_type: feature_flag
+      kill_switch_enabled: true
+      is_internal_user: true
+      customer_tier: enterprise
+    expect:
+      enabled: false
+      track_exposure: false
+      matched_rule: global_kill_switch
+
+  - name: maintenance mode disables affected features
+    input:
+      rule_type: feature_flag
+      is_maintenance_window: true
+      feature_id: checkout_v2
+      customer_tier: enterprise
+      account_status: active
+    expect:
+      enabled: false
+      reason: "Maintenance in progress"
+      matched_rule: maintenance_mode
+
+  - name: maintenance mode does not affect other features
+    input:
+      rule_type: feature_flag
+      is_maintenance_window: true
+      feature_id: user_profile_v2
+      customer_tier: enterprise
+      account_status: active
+      user_bucket: 50
+    expect:
+      enabled: true
+      matched_rule: rollout_enterprise_100
+
+  # === Internal Users ===
+
+  - name: employee gets beta
+    input:
+      rule_type: feature_flag
+      is_internal_user: true
+      email_domain: company.com
+    expect:
+      enabled: true
+      variant: beta
+      track_exposure: false
+      matched_rule: internal_employee_beta
+
+  - name: contractor with opt-in gets beta
+    input:
+      rule_type: feature_flag
+      is_internal_user: true
+      email_domain: contractor.company.com
+      beta_opt_in: true
+    expect:
+      enabled: true
+      variant: beta
+      matched_rule: internal_contractor_beta
+
+  - name: contractor without opt-in does not get beta
+    input:
+      rule_type: feature_flag
+      is_internal_user: true
+      email_domain: contractor.company.com
+      beta_opt_in: false
+      customer_tier: free
+      account_status: active
+      user_bucket: 80
+    expect:
+      enabled: false
+      matched_rule: feature_disabled_default
+
+  # === Beta Program ===
+
+  - name: beta program member with verified email
+    input:
+      rule_type: feature_flag
+      is_beta_program_member: true
+      account_age_days: 60
+      has_verified_email: true
+      has_verified_phone: false
+    expect:
+      enabled: true
+      variant: beta
+      matched_rule: beta_program_member
+
+  - name: beta program member with verified phone
+    input:
+      rule_type: feature_flag
+      is_beta_program_member: true
+      account_age_days: 45
+      has_verified_email: false
+      has_verified_phone: true
+    expect:
+      enabled: true
+      variant: beta
+      matched_rule: beta_program_member
+
+  - name: beta program member too new
+    input:
+      rule_type: feature_flag
+      is_beta_program_member: true
+      account_age_days: 15
+      has_verified_email: true
+      customer_tier: starter
+      account_status: active
+      user_bucket: 30
+    expect:
+      matched_rule: rollout_starter_50
+
+  # === Gradual Rollout by Tier ===
+
+  - name: enterprise gets 100% rollout
+    input:
+      rule_type: feature_flag
+      customer_tier: enterprise
+      account_status: active
+      user_bucket: 99
+    expect:
+      enabled: true
+      variant: stable
+      matched_rule: rollout_enterprise_100
+
+  - name: pro user in rollout bucket
+    input:
+      rule_type: feature_flag
+      customer_tier: pro
+      account_status: active
+      user_bucket: 50
+    expect:
+      enabled: true
+      matched_rule: rollout_pro_75
+
+  - name: pro user outside rollout bucket
+    input:
+      rule_type: feature_flag
+      customer_tier: pro
+      account_status: active
+      user_bucket: 80
+      country: US
+    expect:
+      enabled: true
+      matched_rule: geo_rollout_us_ca
+
+  - name: starter user in rollout bucket
+    input:
+      rule_type: feature_flag
+      customer_tier: starter
+      account_status: active
+      user_bucket: 30
+    expect:
+      enabled: true
+      matched_rule: rollout_starter_50
+
+  - name: starter user outside rollout bucket
+    input:
+      rule_type: feature_flag
+      customer_tier: starter
+      account_status: active
+      user_bucket: 60
+    expect:
+      enabled: false
+      matched_rule: feature_disabled_default
+
+  - name: free user in rollout with sufficient age
+    input:
+      rule_type: feature_flag
+      customer_tier: free
+      account_status: active
+      user_bucket: 20
+      account_age_days: 30
+    expect:
+      enabled: true
+      matched_rule: rollout_free_25
+
+  - name: free user too new for rollout
+    input:
+      rule_type: feature_flag
+      customer_tier: free
+      account_status: active
+      user_bucket: 10
+      account_age_days: 3
+    expect:
+      enabled: false
+      matched_rule: feature_disabled_default
+
+  # === Geographic Rollout ===
+
+  - name: US user gets feature
+    input:
+      rule_type: feature_flag
+      country: US
+      account_status: active
+      user_bucket: 50
+    expect:
+      enabled: true
+      matched_rule: geo_rollout_us_ca
+
+  - name: EU user with GDPR consent in limited rollout
+    input:
+      rule_type: feature_flag
+      country: DE
+      account_status: active
+      has_gdpr_consent: true
+      user_bucket: 5
+    expect:
+      enabled: true
+      variant: stable_gdpr
+      matched_rule: geo_rollout_eu_limited
+
+  - name: EU user without GDPR consent excluded
+    input:
+      rule_type: feature_flag
+      country: FR
+      account_status: active
+      has_gdpr_consent: false
+      user_bucket: 5
+    expect:
+      enabled: false
+      matched_rule: feature_disabled_default
+
+  - name: EU user outside limited rollout bucket
+    input:
+      rule_type: feature_flag
+      country: DE
+      account_status: active
+      has_gdpr_consent: true
+      user_bucket: 50
+    expect:
+      enabled: false
+      matched_rule: feature_disabled_default
+
+  # === A/B Test Variants ===
+
+  - name: A/B test control group
+    input:
+      rule_type: feature_flag
+      experiment_id: pricing_page_v2
+      user_bucket: 15
+      account_status: active
+    expect:
+      enabled: true
+      variant: control
+      matched_rule: ab_test_control
+
+  - name: A/B test variant A
+    input:
+      rule_type: feature_flag
+      experiment_id: pricing_page_v2
+      user_bucket: 50
+      account_status: active
+    expect:
+      enabled: true
+      variant: variant_a
+      matched_rule: ab_test_variant_a
+
+  - name: A/B test variant B
+    input:
+      rule_type: feature_flag
+      experiment_id: pricing_page_v2
+      user_bucket: 80
+      account_status: active
+    expect:
+      enabled: true
+      variant: variant_b
+      matched_rule: ab_test_variant_b
+
+  # === Platform Targeting ===
+
+  - name: iOS app user gets mobile feature
+    input:
+      rule_type: feature_flag
+      platform: ios
+      app_version: 3.5
+      account_status: active
+    expect:
+      enabled: true
+      variant: mobile
+      matched_rule: mobile_app_only
+
+  - name: old app version excluded
+    input:
+      rule_type: feature_flag
+      platform: android
+      app_version: 2.5
+      account_status: active
+    expect:
+      enabled: false
+      matched_rule: feature_disabled_default
+
+  - name: pro web user with modern browser
+    input:
+      rule_type: feature_flag
+      platform: web
+      browser_supports_webgl: true
+      customer_tier: pro
+      account_status: active
+      user_bucket: 80
+    expect:
+      enabled: true
+      variant: web_modern
+      matched_rule: new_web_experience
+
+  # === Priority Tests ===
+
+  - name: kill switch beats internal user
+    input:
+      rule_type: feature_flag
+      kill_switch_enabled: true
+      is_internal_user: true
+      email_domain: company.com
+    expect:
+      enabled: false
+      matched_rule: global_kill_switch
+
+  - name: internal user beats tier rollout
+    input:
+      rule_type: feature_flag
+      is_internal_user: true
+      email_domain: company.com
+      customer_tier: enterprise
+      account_status: active
+    expect:
+      variant: beta
+      matched_rule: internal_employee_beta
+
+  - name: beta program beats tier rollout
+    input:
+      rule_type: feature_flag
+      is_beta_program_member: true
+      account_age_days: 60
+      has_verified_email: true
+      customer_tier: free
+      account_status: active
+      user_bucket: 90
+    expect:
+      variant: beta
+      matched_rule: beta_program_member

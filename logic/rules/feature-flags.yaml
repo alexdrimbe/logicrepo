@@ -1,0 +1,267 @@
+version: 1
+rules:
+  # === Kill Switches (Highest Priority) ===
+
+  - id: global_kill_switch
+    description: "Emergency kill switch disables feature globally"
+    when:
+      rule_type: feature_flag
+      kill_switch_enabled: true
+    then:
+      enabled: false
+      variant: null
+      reason: "Feature disabled by kill switch"
+      track_exposure: false
+
+  - id: maintenance_mode
+    description: "Disable during maintenance windows"
+    when:
+      rule_type: feature_flag
+      all:
+        - is_maintenance_window: true
+        - feature_id:
+            in: [checkout_v2, payment_processor, inventory_sync]
+    then:
+      enabled: false
+      variant: null
+      reason: "Maintenance in progress"
+      track_exposure: false
+
+  # === Internal Users (Always Get Beta) ===
+
+  - id: internal_employee_beta
+    description: "Employees always see beta features"
+    when:
+      rule_type: feature_flag
+      all:
+        - is_internal_user: true
+        - email_domain: company.com
+    then:
+      enabled: true
+      variant: beta
+      reason: "Internal employee"
+      track_exposure: false
+
+  - id: internal_contractor_beta
+    description: "Contractors get beta if opted in"
+    when:
+      rule_type: feature_flag
+      all:
+        - is_internal_user: true
+        - email_domain: contractor.company.com
+        - beta_opt_in: true
+    then:
+      enabled: true
+      variant: beta
+      reason: "Contractor beta opt-in"
+      track_exposure: false
+
+  # === Beta Program ===
+
+  - id: beta_program_member
+    description: "Beta program members get early access"
+    when:
+      rule_type: feature_flag
+      all:
+        - is_beta_program_member: true
+        - account_age_days:
+            gte: 30
+        - any:
+            - has_verified_email: true
+            - has_verified_phone: true
+    then:
+      enabled: true
+      variant: beta
+      reason: "Beta program member"
+      track_exposure: true
+
+  # === Gradual Rollout by Segment ===
+
+  - id: rollout_enterprise_100
+    description: "Enterprise customers get 100% rollout"
+    when:
+      rule_type: feature_flag
+      all:
+        - customer_tier: enterprise
+        - account_status: active
+    then:
+      enabled: true
+      variant: stable
+      reason: "Enterprise tier - full rollout"
+      track_exposure: true
+
+  - id: rollout_pro_75
+    description: "Pro customers 75% rollout"
+    when:
+      rule_type: feature_flag
+      all:
+        - customer_tier: pro
+        - account_status: active
+        - user_bucket:
+            lt: 75
+    then:
+      enabled: true
+      variant: stable
+      reason: "Pro tier gradual rollout"
+      track_exposure: true
+
+  - id: rollout_starter_50
+    description: "Starter customers 50% rollout"
+    when:
+      rule_type: feature_flag
+      all:
+        - customer_tier: starter
+        - account_status: active
+        - user_bucket:
+            lt: 50
+    then:
+      enabled: true
+      variant: stable
+      reason: "Starter tier gradual rollout"
+      track_exposure: true
+
+  - id: rollout_free_25
+    description: "Free users 25% rollout"
+    when:
+      rule_type: feature_flag
+      all:
+        - customer_tier: free
+        - account_status: active
+        - user_bucket:
+            lt: 25
+        - account_age_days:
+            gte: 7
+    then:
+      enabled: true
+      variant: stable
+      reason: "Free tier gradual rollout"
+      track_exposure: true
+
+  # === Geographic Rollout ===
+
+  - id: geo_rollout_us_ca
+    description: "Full rollout in US and Canada"
+    when:
+      rule_type: feature_flag
+      all:
+        - country:
+            in: [US, CA]
+        - account_status: active
+        - user_bucket:
+            lt: 90
+    then:
+      enabled: true
+      variant: stable
+      reason: "Geographic rollout - North America"
+      track_exposure: true
+
+  - id: geo_rollout_eu_limited
+    description: "Limited EU rollout for GDPR compliance testing"
+    when:
+      rule_type: feature_flag
+      all:
+        - country:
+            in: [DE, FR, GB, NL, ES, IT]
+        - account_status: active
+        - has_gdpr_consent: true
+        - user_bucket:
+            lt: 10
+    then:
+      enabled: true
+      variant: stable_gdpr
+      reason: "EU limited rollout"
+      track_exposure: true
+
+  # === A/B Test Variants ===
+
+  - id: ab_test_control
+    description: "Control group for A/B test"
+    when:
+      rule_type: feature_flag
+      all:
+        - experiment_id: pricing_page_v2
+        - user_bucket:
+            lt: 33
+        - account_status: active
+    then:
+      enabled: true
+      variant: control
+      reason: "A/B test control group"
+      track_exposure: true
+
+  - id: ab_test_variant_a
+    description: "Variant A - new pricing layout"
+    when:
+      rule_type: feature_flag
+      all:
+        - experiment_id: pricing_page_v2
+        - user_bucket:
+            gte: 33
+            lt: 66
+        - account_status: active
+    then:
+      enabled: true
+      variant: variant_a
+      reason: "A/B test variant A"
+      track_exposure: true
+
+  - id: ab_test_variant_b
+    description: "Variant B - simplified pricing"
+    when:
+      rule_type: feature_flag
+      all:
+        - experiment_id: pricing_page_v2
+        - user_bucket:
+            gte: 66
+        - account_status: active
+    then:
+      enabled: true
+      variant: variant_b
+      reason: "A/B test variant B"
+      track_exposure: true
+
+  # === Device/Platform Targeting ===
+
+  - id: mobile_app_only
+    description: "Feature only available on mobile apps"
+    when:
+      rule_type: feature_flag
+      all:
+        - platform:
+            in: [ios, android]
+        - app_version:
+            gte: 3.0
+        - account_status: active
+    then:
+      enabled: true
+      variant: mobile
+      reason: "Mobile app feature"
+      track_exposure: true
+
+  - id: new_web_experience
+    description: "New web experience for modern browsers"
+    when:
+      rule_type: feature_flag
+      all:
+        - platform: web
+        - browser_supports_webgl: true
+        - any:
+            - customer_tier: enterprise
+            - customer_tier: pro
+    then:
+      enabled: true
+      variant: web_modern
+      reason: "Modern web experience"
+      track_exposure: true
+
+  # === Default: Feature Disabled ===
+
+  - id: feature_disabled_default
+    description: "Feature not available"
+    when:
+      rule_type: feature_flag
+    then:
+      enabled: false
+      variant: null
+      reason: "Not in rollout"
+      track_exposure: false

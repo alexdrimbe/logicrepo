@@ -1,0 +1,159 @@
+version: 1
+tests:
+  # ==========================================
+  # Operation Outcome Tests
+  # ==========================================
+
+  # --- Auth failures ---
+
+  - name: operation fails when not authenticated
+    input:
+      rule_type: todo_operation
+      auth_status: denied
+    expect:
+      operation_status: failed
+      http_status: 401
+      error_type: authentication_error
+      should_execute: false
+      matched_rule: op_auth_failed
+
+  # --- Authz failures ---
+
+  - name: operation fails when todo not found
+    input:
+      rule_type: todo_operation
+      auth_status: authenticated
+      authz_status: not_found
+    expect:
+      operation_status: failed
+      http_status: 404
+      error_type: not_found
+      should_execute: false
+      matched_rule: op_not_found
+
+  - name: operation fails when forbidden
+    input:
+      rule_type: todo_operation
+      auth_status: authenticated
+      authz_status: forbidden
+    expect:
+      operation_status: failed
+      http_status: 403
+      error_type: forbidden
+      should_execute: false
+      matched_rule: op_forbidden
+
+  # --- Validation failures ---
+
+  - name: operation fails when validation fails
+    input:
+      rule_type: todo_operation
+      auth_status: authenticated
+      authz_status: authorized
+      is_valid: false
+      validation_status: invalid
+    expect:
+      operation_status: failed
+      http_status: 400
+      error_type: validation_error
+      should_execute: false
+      matched_rule: op_validation_failed
+
+  # --- CREATE success ---
+
+  - name: create todo success
+    input:
+      rule_type: todo_operation
+      operation: create
+      auth_status: authenticated
+      authz_status: authorized
+      is_authorized: true
+      is_valid: true
+    expect:
+      operation_status: success
+      http_status: 201
+      action: create_todo
+      should_execute: true
+      set_owner: true
+      matched_rule: op_create_success
+
+  # --- READ success ---
+
+  - name: read todo success
+    input:
+      rule_type: todo_operation
+      operation: read
+      auth_status: authenticated
+      authz_status: authorized
+      is_authorized: true
+    expect:
+      operation_status: success
+      http_status: 200
+      action: return_todo
+      should_execute: true
+      matched_rule: op_read_success
+
+  # --- LIST success ---
+
+  - name: admin list all todos
+    input:
+      rule_type: todo_operation
+      operation: list
+      auth_status: authenticated
+      authz_status: authorized
+      is_authorized: true
+      is_admin: true
+    expect:
+      operation_status: success
+      http_status: 200
+      action: return_all_todos
+      filter_by_owner: false
+      matched_rule: op_list_admin_success
+
+  - name: user list own todos
+    input:
+      rule_type: todo_operation
+      operation: list
+      auth_status: authenticated
+      authz_status: authorized
+      is_authorized: true
+      is_admin: false
+    expect:
+      operation_status: success
+      http_status: 200
+      action: return_user_todos
+      filter_by_owner: true
+      matched_rule: op_list_user_success
+
+  # --- UPDATE success ---
+
+  - name: update todo success
+    input:
+      rule_type: todo_operation
+      operation: update
+      auth_status: authenticated
+      authz_status: authorized
+      is_authorized: true
+      is_valid: true
+    expect:
+      operation_status: success
+      http_status: 200
+      action: update_todo
+      preserve_owner: true
+      matched_rule: op_update_success
+
+  # --- DELETE success ---
+
+  - name: delete todo success
+    input:
+      rule_type: todo_operation
+      operation: delete
+      auth_status: authenticated
+      authz_status: authorized
+      is_authorized: true
+    expect:
+      operation_status: success
+      http_status: 200
+      action: delete_todo
+      should_execute: true
+      matched_rule: op_delete_success

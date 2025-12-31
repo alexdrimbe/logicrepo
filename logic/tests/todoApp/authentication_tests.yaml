@@ -1,0 +1,86 @@
+version: 1
+tests:
+  # ==========================================
+  # Authentication Tests
+  # ==========================================
+
+  # --- Unauthenticated users ---
+
+  - name: unauthenticated user denied
+    input:
+      rule_type: todo_authentication
+      is_authenticated: false
+    expect:
+      auth_status: denied
+      can_proceed: false
+      matched_rule: auth_not_authenticated
+
+  - name: null authentication denied
+    input:
+      rule_type: todo_authentication
+      is_authenticated: null
+    expect:
+      auth_status: denied
+      can_proceed: false
+      matched_rule: auth_not_authenticated
+
+  # --- Account status checks ---
+
+  - name: suspended account denied
+    input:
+      rule_type: todo_authentication
+      is_authenticated: true
+      account_status: suspended
+      user_role: user
+    expect:
+      auth_status: denied
+      can_proceed: false
+      matched_rule: auth_account_suspended
+
+  - name: inactive account denied
+    input:
+      rule_type: todo_authentication
+      is_authenticated: true
+      account_status: inactive
+      user_role: user
+    expect:
+      auth_status: denied
+      can_proceed: false
+      matched_rule: auth_account_inactive
+
+  # --- Successful authentication ---
+
+  - name: admin user authenticated
+    input:
+      rule_type: todo_authentication
+      is_authenticated: true
+      account_status: active
+      user_role: admin
+    expect:
+      auth_status: authenticated
+      can_proceed: true
+      is_admin: true
+      matched_rule: auth_admin_user
+
+  - name: regular user authenticated
+    input:
+      rule_type: todo_authentication
+      is_authenticated: true
+      account_status: active
+      user_role: user
+    expect:
+      auth_status: authenticated
+      can_proceed: true
+      is_admin: false
+      matched_rule: auth_regular_user
+
+  - name: user with no explicit role gets default
+    input:
+      rule_type: todo_authentication
+      is_authenticated: true
+      account_status: active
+    expect:
+      auth_status: authenticated
+      can_proceed: true
+      is_admin: false
+      matched_rule: auth_default_role

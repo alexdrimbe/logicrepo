@@ -1,0 +1,79 @@
+version: 1
+rules:
+  # ==========================================
+  # Authentication Rules
+  # Establishes: who the user is, their role, account status
+  # ==========================================
+
+  # Check if user is authenticated and account is active
+  - id: auth_not_authenticated
+    description: "User has no valid session or token"
+    when:
+      rule_type: todo_authentication
+      any:
+        - is_authenticated: false
+        - is_authenticated: null
+    then:
+      auth_status: denied
+      auth_error: "Authentication required"
+      can_proceed: false
+
+  - id: auth_account_suspended
+    description: "User account is suspended"
+    when:
+      rule_type: todo_authentication
+      is_authenticated: true
+      account_status: suspended
+    then:
+      auth_status: denied
+      auth_error: "Account is suspended"
+      can_proceed: false
+
+  - id: auth_account_inactive
+    description: "User account is inactive"
+    when:
+      rule_type: todo_authentication
+      is_authenticated: true
+      account_status: inactive
+    then:
+      auth_status: denied
+      auth_error: "Account is inactive"
+      can_proceed: false
+
+  - id: auth_admin_user
+    description: "Authenticated admin user"
+    when:
+      rule_type: todo_authentication
+      is_authenticated: true
+      account_status: active
+      user_role: admin
+    then:
+      auth_status: authenticated
+      auth_error: null
+      can_proceed: true
+      is_admin: true
+
+  - id: auth_regular_user
+    description: "Authenticated regular user"
+    when:
+      rule_type: todo_authentication
+      is_authenticated: true
+      account_status: active
+      user_role: user
+    then:
+      auth_status: authenticated
+      auth_error: null
+      can_proceed: true
+      is_admin: false
+
+  - id: auth_default_role
+    description: "Authenticated user with default role"
+    when:
+      rule_type: todo_authentication
+      is_authenticated: true
+      account_status: active
+    then:
+      auth_status: authenticated
+      auth_error: null
+      can_proceed: true
+      is_admin: false

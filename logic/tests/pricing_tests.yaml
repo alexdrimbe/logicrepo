@@ -1,0 +1,33 @@
+version: 1
+tests:
+  - name: enterprise customer gets 20% discount
+    input:
+      customer_tier: enterprise
+      quantity: 50
+    expect:
+      discount_percent: 20
+      matched_rule: enterprise_discount
+
+  - name: bulk order from standard customer
+    input:
+      customer_tier: standard
+      quantity: 150
+    expect:
+      discount_percent: 10
+      matched_rule: bulk_discount
+
+  - name: no discount for small standard order
+    input:
+      customer_tier: standard
+      quantity: 10
+    expect:
+      discount_percent: 0
+      matched_rule: default_pricing
+
+  - name: enterprise trumps bulk (order matters)
+    input:
+      customer_tier: enterprise
+      quantity: 200
+    expect:
+      discount_percent: 20
+      matched_rule: enterprise_discount

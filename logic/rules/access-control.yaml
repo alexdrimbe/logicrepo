@@ -1,0 +1,168 @@
+version: 1
+rules:
+  # === Blocked States (Highest Priority) ===
+
+  - id: account_suspended
+    description: "Suspended accounts have no access regardless of role"
+    when:
+      rule_type: access_control
+      account_status: suspended
+    then:
+      access_granted: false
+      access_level: none
+      reason: "Account suspended - contact support"
+
+  - id: account_pending_verification
+    description: "Unverified accounts have limited access"
+    when:
+      rule_type: access_control
+      all:
+        - account_status: active
+        - email_verified: false
+    then:
+      access_granted: true
+      access_level: limited
+      reason: "Email verification required for full access"
+
+  - id: ip_blocked_region
+    description: "Block access from restricted regions"
+    when:
+      rule_type: access_control
+      region:
+        in: [sanctioned_country_a, sanctioned_country_b, sanctioned_country_c]
+    then:
+      access_granted: false
+      access_level: none
+      reason: "Access not available in your region"
+
+  # === Super Admin (Full Override) ===
+
+  - id: super_admin_access
+    description: "Super admins bypass all restrictions"
+    when:
+      rule_type: access_control
+      all:
+        - role: super_admin
+        - account_status: active
+        - email_verified: true
+    then:
+      access_granted: true
+      access_level: full
+      can_manage_users: true
+      can_manage_billing: true
+      can_view_audit_logs: true
+      can_delete_organization: true
+
+  # === Admin Tiers ===
+
+  - id: billing_admin_access
+    description: "Billing admins can manage payments but not users"
+    when:
+      rule_type: access_control
+      all:
+        - role: billing_admin
+        - account_status: active
+        - email_verified: true
+    then:
+      access_granted: true
+      access_level: elevated
+      can_manage_users: false
+      can_manage_billing: true
+      can_view_audit_logs: true
+      can_delete_organization: false
+
+  - id: user_admin_access
+    description: "User admins can manage users but not billing"
+    when:
+      rule_type: access_control
+      all:
+        - role: user_admin
+        - account_status: active
+        - email_verified: true
+    then:
+      access_granted: true
+      access_level: elevated
+      can_manage_users: true
+      can_manage_billing: false
+      can_view_audit_logs: true
+      can_delete_organization: false
+
+  # === Resource-Based Access ===
+
+  - id: owner_full_access
+    description: "Resource owners have full access to their resources"
+    when:
+      rule_type: access_control
+      all:
+        - account_status: active
+        - email_verified: true
+        - is_resource_owner: true
+    then:
+      access_granted: true
+      access_level: full
+      can_manage_users: true
+      can_manage_billing: false
+      can_view_audit_logs: false
+      can_delete_organization: false
+
+  - id: editor_write_access
+    description: "Editors can modify but not manage"
+    when:
+      rule_type: access_control
+      all:
+        - account_status: active
+        - email_verified: true
+        - any:
+            - role: editor
+            - is_team_editor: true
+    then:
+      access_granted: true
+      access_level: write
+      can_manage_users: false
+      can_manage_billing: false
+      can_view_audit_logs: false
+      can_delete_organization: false
+
+  - id: viewer_read_access
+    description: "Viewers have read-only access"
+    when:
+      rule_type: access_control
+      all:
+        - account_status: active
+        - email_verified: true
+        - any:
+            - role: viewer
+            - is_team_viewer: true
+    then:
+      access_granted: true
+      access_level: read
+      can_manage_users: false
+      can_manage_billing: false
+      can_view_audit_logs: false
+      can_delete_organization: false
+
+  # === Public Resource Access ===
+
+  - id: public_resource_anonymous
+    description: "Public resources accessible without authentication"
+    when:
+      rule_type: access_control
+      resource_visibility: public
+    then:
+      access_granted: true
+      access_level: read
+      can_manage_users: false
+      can_manage_billing: false
+      can_view_audit_logs: false
+      can_delete_organization: false
+
+  # === Default Deny ===
+
+  - id: default_deny
+    description: "Deny access by default"
+    when:
+      rule_type: access_control
+    then:
+      access_granted: false
+      access_level: none
+      reason: "Access denied - insufficient permissions"

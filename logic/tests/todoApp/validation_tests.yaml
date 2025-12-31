@@ -1,0 +1,210 @@
+version: 1
+tests:
+  # ==========================================
+  # Validation Tests
+  # ==========================================
+
+  # --- Skip validation when not authorized ---
+
+  - name: validation skipped when not authorized
+    input:
+      rule_type: todo_validation
+      is_authorized: false
+    expect:
+      validation_status: skipped
+      is_valid: false
+      matched_rule: validation_skip_unauthorized
+
+  # --- Title validation ---
+
+  - name: title missing
+    input:
+      rule_type: todo_validation
+      is_authorized: true
+      has_title: false
+    expect:
+      validation_status: invalid
+      is_valid: false
+      invalid_field: title
+      matched_rule: validation_title_missing
+
+  - name: title empty
+    input:
+      rule_type: todo_validation
+      is_authorized: true
+      has_title: true
+      title_empty: true
+    expect:
+      validation_status: invalid
+      is_valid: false
+      invalid_field: title
+      matched_rule: validation_title_missing
+
+  - name: title too long
+    input:
+      rule_type: todo_validation
+      is_authorized: true
+      has_title: true
+      title_empty: false
+      title_length: 250
+    expect:
+      validation_status: invalid
+      is_valid: false
+      invalid_field: title
+      matched_rule: validation_title_too_long
+
+  - name: title too short
+    input:
+      rule_type: todo_validation
+      is_authorized: true
+      has_title: true
+      title_empty: false
+      title_length: 2
+    expect:
+      validation_status: invalid
+      is_valid: false
+      invalid_field: title
+      matched_rule: validation_title_too_short
+
+  - name: title valid length
+    input:
+      rule_type: todo_validation
+      is_authorized: true
+      has_title: true
+      title_empty: false
+      title_length: 50
+    expect:
+      validation_status: valid
+      is_valid: true
+      matched_rule: validation_passed
+
+  # --- Description validation ---
+
+  - name: description too long
+    input:
+      rule_type: todo_validation
+      is_authorized: true
+      has_title: true
+      title_empty: false
+      title_length: 50
+      has_description: true
+      description_length: 2500
+    expect:
+      validation_status: invalid
+      is_valid: false
+      invalid_field: description
+      matched_rule: validation_description_too_long
+
+  - name: description valid length
+    input:
+      rule_type: todo_validation
+      is_authorized: true
+      has_title: true
+      title_empty: false
+      title_length: 50
+      has_description: true
+      description_length: 500
+    expect:
+      validation_status: valid
+      is_valid: true
+      matched_rule: validation_passed
+
+  # --- Due date validation ---
+
+  - name: due date invalid format
+    input:
+      rule_type: todo_validation
+      is_authorized: true
+      has_title: true
+      title_empty: false
+      title_length: 50
+      has_due_date: true
+      due_date_valid: false
+    expect:
+      validation_status: invalid
+      is_valid: false
+      invalid_field: due_date
+      matched_rule: validation_due_date_invalid
+
+  - name: due date in past gives warning
+    input:
+      rule_type: todo_validation
+      is_authorized: true
+      has_title: true
+      title_empty: false
+      title_length: 50
+      has_due_date: true
+      due_date_valid: true
+      due_date_in_past: true
+    expect:
+      validation_status: warning
+      is_valid: true
+      has_warning: true
+      matched_rule: validation_due_date_past
+
+  - name: due date valid future
+    input:
+      rule_type: todo_validation
+      is_authorized: true
+      has_title: true
+      title_empty: false
+      title_length: 50
+      has_due_date: true
+      due_date_valid: true
+      due_date_in_past: false
+    expect:
+      validation_status: valid
+      is_valid: true
+      matched_rule: validation_passed
+
+  # --- Completed status validation ---
+
+  - name: completed status not boolean
+    input:
+      rule_type: todo_validation
+      is_authorized: true
+      has_title: true
+      title_empty: false
+      title_length: 50
+      has_completed: true
+      completed_is_boolean: false
+    expect:
+      validation_status: invalid
+      is_valid: false
+      invalid_field: completed
+      matched_rule: validation_completed_invalid
+
+  - name: completed status valid boolean
+    input:
+      rule_type: todo_validation
+      is_authorized: true
+      has_title: true
+      title_empty: false
+      title_length: 50
+      has_completed: true
+      completed_is_boolean: true
+    expect:
+      validation_status: valid
+      is_valid: true
+      matched_rule: validation_passed
+
+  # --- Full valid todo ---
+
+  - name: fully valid todo with all fields
+    input:
+      rule_type: todo_validation
+      is_authorized: true
+      has_title: true
+      title_empty: false
+      title_length: 100
+      has_description: true
+      description_length: 500
+      has_due_date: true
+      due_date_valid: true
+      due_date_in_past: false
+      has_completed: true
+      completed_is_boolean: true
+    expect:
+      validation_status: valid
+      is_valid: true
+      matched_rule: validation_passed

@@ -1,0 +1,130 @@
+version: 1
+tests:
+  # ==========================================
+  # Authorization Tests
+  # ==========================================
+
+  # --- Pre-auth checks ---
+
+  - name: cannot authorize unauthenticated user
+    input:
+      rule_type: todo_authorization
+      can_proceed: false
+    expect:
+      authz_status: denied
+      is_authorized: false
+      matched_rule: authz_not_authenticated
+
+  # --- Todo existence checks ---
+
+  - name: todo not found
+    input:
+      rule_type: todo_authorization
+      can_proceed: true
+      is_admin: false
+      requires_existing_todo: true
+      todo_exists: false
+    expect:
+      authz_status: not_found
+      is_authorized: false
+      matched_rule: authz_todo_not_found
+
+  # --- Admin access ---
+
+  - name: admin can access any todo
+    input:
+      rule_type: todo_authorization
+      can_proceed: true
+      is_admin: true
+      requires_existing_todo: true
+      todo_exists: true
+      is_owner: false
+    expect:
+      authz_status: authorized
+      is_authorized: true
+      authz_reason: "Admin access"
+      matched_rule: authz_admin_access
+
+  - name: admin can access own todo
+    input:
+      rule_type: todo_authorization
+      can_proceed: true
+      is_admin: true
+      requires_existing_todo: true
+      todo_exists: true
+      is_owner: true
+    expect:
+      authz_status: authorized
+      is_authorized: true
+      matched_rule: authz_admin_access
+
+  # --- Owner access ---
+
+  - name: owner can access their todo
+    input:
+      rule_type: todo_authorization
+      can_proceed: true
+      is_admin: false
+      requires_existing_todo: true
+      todo_exists: true
+      is_owner: true
+    expect:
+      authz_status: authorized
+      is_authorized: true
+      authz_reason: "Owner access"
+      matched_rule: authz_owner_access
+
+  - name: non-owner cannot access others todo
+    input:
+      rule_type: todo_authorization
+      can_proceed: true
+      is_admin: false
+      requires_existing_todo: true
+      todo_exists: true
+      is_owner: false
+    expect:
+      authz_status: forbidden
+      is_authorized: false
+      matched_rule: authz_not_owner
+
+  # --- Create operation ---
+
+  - name: user can create todo
+    input:
+      rule_type: todo_authorization
+      can_proceed: true
+      is_admin: false
+      requires_existing_todo: false
+      operation: create
+    expect:
+      authz_status: authorized
+      is_authorized: true
+      authz_reason: "Create operation"
+      matched_rule: authz_create_todo
+
+  - name: admin can create todo
+    input:
+      rule_type: todo_authorization
+      can_proceed: true
+      is_admin: true
+      requires_existing_todo: false
+      operation: create
+    expect:
+      authz_status: authorized
+      is_authorized: true
+      matched_rule: authz_admin_access
+
+  # --- List operation ---
+
+  - name: user can list their own todos
+    input:
+      rule_type: todo_authorization
+      can_proceed: true
+      is_admin: false
+      requires_existing_todo: false
+      operation: list
+    expect:
+      authz_status: authorized
+      is_authorized: true
+      scope: own
+      matched_rule: authz_list_own_todos

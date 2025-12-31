@@ -1,0 +1,44 @@
+{
+  "name": "logicrepo",
+  "version": "0.1.0",
+  "description": "Validate business logic defined in YAML files",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "logicrepo": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "business-logic",
+    "validation",
+    "yaml",
+    "rules-engine",
+    "ci"
+  ],
+  "author": "Alex Drimbe <alexdrimbe@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^12.0.0",
+    "yaml": "^2.3.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

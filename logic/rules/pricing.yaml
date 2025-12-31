@@ -1,0 +1,22 @@
+version: 1
+rules:
+  - id: enterprise_discount
+    description: "Enterprise customers get 20% off"
+    when:
+      customer_tier: enterprise
+    then:
+      discount_percent: 20
+
+  - id: bulk_discount
+    description: "Orders over 100 units get 10% off"
+    when:
+      quantity:
+        gte: 100
+    then:
+      discount_percent: 10
+
+  - id: default_pricing
+    description: "Standard pricing for everyone else"
+    when: {}
+    then:
+      discount_percent: 0
