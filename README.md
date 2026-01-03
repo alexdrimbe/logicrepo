@@ -9,11 +9,12 @@ Separate business logic from application code. Define rules as version-controlle
 ## Quick Start
 
 ```bash
-# Install and build
-npm install && npm run build
+# Run directly with npx
+npx logicrepo check
 
-# Run validation
-node dist/index.js check
+# Or install globally
+npm install -g logicrepo
+logicrepo check
 ```
 
 ## Example
@@ -84,8 +85,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm ci && npm run build
-      - run: node dist/index.js check
+      - run: npx logicrepo check
 ```
 
 ## Key Concepts
