@@ -65,10 +65,10 @@ Running tests...
 
 | Document | Description |
 |----------|-------------|
-| [Getting Started](docs/getting-started.md) | Create your first rules and tests |
-| [Rules Reference](docs/rules.md) | Complete rule syntax and operators |
-| [Examples](docs/examples.md) | Real-world examples: pricing, access control, feature flags |
-| [Best Practices](docs/best-practices.md) | Patterns, anti-patterns, and code review checklist |
+| [Getting Started](https://github.com/alexdrimbe/logicrepo/blob/main/docs/getting-started.md) | Create your first rules and tests |
+| [Rules Reference](https://github.com/alexdrimbe/logicrepo/blob/main/docs/rules.md) | Complete rule syntax and operators |
+| [Examples](https://github.com/alexdrimbe/logicrepo/blob/main/docs/examples.md) | Real-world examples: pricing, access control, feature flags |
+| [Best Practices](https://github.com/alexdrimbe/logicrepo/blob/main/docs/best-practices.md) | Patterns, anti-patterns, and code review checklist |
 
 ## CI Integration
 
